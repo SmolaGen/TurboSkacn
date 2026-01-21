@@ -90,39 +90,64 @@ class TaskMetadataConfig(TypedDict, total=False):
 Phase = Literal["spec", "planning", "coding", "qa"]
 
 
+# Reverse map for convenience: full ID -> shorthand
+REVERSE_MODEL_MAP = {v: k for k, v in MODEL_ID_MAP.items()}
+
+# Maps shorthands to their respective environment variable overrides
+ENV_VAR_MAP = {
+    "haiku": "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+    "sonnet": "ANTHROPIC_DEFAULT_SONNET_MODEL",
+    "opus": "ANTHROPIC_DEFAULT_OPUS_MODEL",
+}
+
+
 def resolve_model_id(model: str) -> str:
     """
-    Resolve a model shorthand (haiku, sonnet, opus) to a full model ID.
-    If the model is already a full ID, return it unchanged.
+    Resolve a model shorthand (haiku, sonnet, opus) or a full Claude ID to a final model ID.
+    If an environment variable override is set, it takes precedence.
 
     Priority:
-    1. Environment variable override (from API Profile)
+    1. Environment variable override (ANTHROPIC_DEFAULT_HAIKU_MODEL, etc.)
     2. Hardcoded MODEL_ID_MAP
-    3. Pass through unchanged (assume full model ID)
+    3. Pass through unchanged (for already resolved or custom models)
 
     Args:
-        model: Model shorthand or full ID
+        model: Model shorthand (e.g., 'haiku'), full ID (e.g., 'claude-haiku-4-5-20251001'),
+               or variants like 'claude-haiku-4-5'.
 
     Returns:
-        Full Claude model ID
+        The final resolved model ID string.
     """
-    # Check for environment variable override (from API Profile custom model mappings)
+    # 1. Identify which shorthand category this model belongs to
+    shorthand = None
     if model in MODEL_ID_MAP:
-        env_var_map = {
-            "haiku": "ANTHROPIC_DEFAULT_HAIKU_MODEL",
-            "sonnet": "ANTHROPIC_DEFAULT_SONNET_MODEL",
-            "opus": "ANTHROPIC_DEFAULT_OPUS_MODEL",
-        }
-        env_var = env_var_map.get(model)
+        # e.g., "haiku"
+        shorthand = model
+    elif model in REVERSE_MODEL_MAP:
+        # e.g., "claude-haiku-4-5-20251001" -> "haiku"
+        shorthand = REVERSE_MODEL_MAP[model]
+    elif "haiku" in model:
+        shorthand = "haiku"
+    elif "sonnet" in model:
+        shorthand = "sonnet"
+    elif "opus" in model:
+        shorthand = "opus"
+
+    # 2. If it's a known shorthand category, check for environment override
+    if shorthand:
+        env_var = ENV_VAR_MAP.get(shorthand)
         if env_var:
             env_value = os.environ.get(env_var)
             if env_value:
                 return env_value
+        # If no env override, but we found a strict shorthand match in MODEL_ID_MAP, return that.
+        # Otherwise, if it was a fuzzy match (e.g. "claude-3-opus"), we should probably return the input model
+        # unless we want to force mapping for EVERYTHING.
+        # But here, let's map it if we have a strict mapping available.
+        if shorthand in MODEL_ID_MAP:
+            return MODEL_ID_MAP[shorthand]
 
-        # Fall back to hardcoded mapping
-        return MODEL_ID_MAP[model]
-
-    # Already a full model ID or unknown shorthand
+    # 3. Not a known shorthand or variant - return as is
     return model
 
 

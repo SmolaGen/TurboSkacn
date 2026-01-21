@@ -31,7 +31,7 @@ from core.auth import (
     validate_token_not_encrypted,
 )
 from core.client import find_claude_cli
-from phase_config import get_thinking_budget
+from phase_config import get_thinking_budget, resolve_model_id
 
 
 def create_simple_client(
@@ -98,9 +98,12 @@ def create_simple_client(
     # Find Claude CLI path (handles non-standard installations)
     cli_path = find_claude_cli()
 
+    # Resolve model ID (applies overrides)
+    resolved_model = resolve_model_id(model)
+
     # Build options dict
     options_kwargs = {
-        "model": model,
+        "model": resolved_model,
         "system_prompt": system_prompt,
         "allowed_tools": allowed_tools,
         "max_turns": max_turns,

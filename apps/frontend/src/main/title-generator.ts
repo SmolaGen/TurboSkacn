@@ -105,7 +105,7 @@ export class TitleGenerator extends EventEmitter {
           let value = trimmed.substring(eqIndex + 1).trim();
 
           if ((value.startsWith('"') && value.endsWith('"')) ||
-              (value.startsWith("'") && value.endsWith("'"))) {
+            (value.startsWith("'") && value.endsWith("'"))) {
             value = value.slice(1, -1);
           }
 
@@ -132,14 +132,17 @@ export class TitleGenerator extends EventEmitter {
       return null;
     }
 
+    const autoBuildEnv = this.loadAutoBuildEnv();
+    const model = autoBuildEnv.ANTHROPIC_DEFAULT_HAIKU_MODEL || 'claude-haiku-4-5-20251001';
+
     const prompt = this.createTitlePrompt(description);
-    const script = this.createGenerationScript(prompt);
+    const script = this.createGenerationScript(prompt, model);
 
     debug('Generating title for description:', description.substring(0, 100) + '...');
 
-    const autoBuildEnv = this.loadAutoBuildEnv();
     debug('Environment loaded', {
-      hasOAuthToken: !!autoBuildEnv.CLAUDE_CODE_OAUTH_TOKEN
+      hasOAuthToken: !!autoBuildEnv.CLAUDE_CODE_OAUTH_TOKEN,
+      model
     });
 
     // Get active Claude profile environment (CLAUDE_CONFIG_DIR if not default)
@@ -232,9 +235,10 @@ Title:`;
   /**
    * Create the Python script to generate title using Claude Agent SDK
    */
-  private createGenerationScript(prompt: string): string {
-    // Escape the prompt for Python string - use JSON.stringify for safe escaping
+  private createGenerationScript(prompt: string, model: string): string {
+    // Escape the prompt and model for Python string
     const escapedPrompt = JSON.stringify(prompt);
+    const escapedModel = JSON.stringify(model);
 
     return `
 import asyncio
@@ -244,12 +248,20 @@ async def generate_title():
     try:
         from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
 
+        # Try to resolve model ID using backend logic if available
+        model_id = ${escapedModel}
+        try:
+            from phase_config import resolve_model_id
+            model_id = resolve_model_id(model_id)
+        except ImportError:
+            pass
+
         prompt = ${escapedPrompt}
 
         # Create a minimal client for simple text generation (no tools needed)
         client = ClaudeSDKClient(
             options=ClaudeAgentOptions(
-                model="claude-haiku-4-5",
+                model=model_id,
                 system_prompt="You generate short, concise task titles (3-7 words). Output ONLY the title, nothing else. No quotes, no explanation, no preamble.",
                 max_turns=1,
             )

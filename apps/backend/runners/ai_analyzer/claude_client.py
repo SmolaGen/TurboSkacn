@@ -8,6 +8,8 @@ from typing import Any
 
 try:
     from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
+    from core.auth import get_sdk_env_vars, require_auth_token
+    from core.client import find_claude_cli
     from phase_config import resolve_model_id
 
     CLAUDE_SDK_AVAILABLE = True
@@ -109,16 +111,28 @@ class ClaudeAnalysisClient:
             f"Output your analysis as valid JSON only."
         )
 
-        return ClaudeSDKClient(
-            options=ClaudeAgentOptions(
-                model=resolve_model_id(self.DEFAULT_MODEL),  # Resolve via API Profile
-                system_prompt=system_prompt,
-                allowed_tools=self.ALLOWED_TOOLS,
-                max_turns=self.MAX_TURNS,
-                cwd=str(self.project_dir.resolve()),
-                settings=str(settings_file.resolve()),
-            )
-        )
+        # Collect environment variables (Base URL, OAuth Token, etc.)
+        # require_auth_token() ensures token is set in process env for get_sdk_env_vars
+        require_auth_token()
+        sdk_env = get_sdk_env_vars()
+
+        # Find Claude CLI path
+        cli_path = find_claude_cli()
+
+        options_kwargs = {
+            "model": resolve_model_id(self.DEFAULT_MODEL),
+            "system_prompt": system_prompt,
+            "allowed_tools": self.ALLOWED_TOOLS,
+            "max_turns": self.MAX_TURNS,
+            "cwd": str(self.project_dir.resolve()),
+            "settings": str(settings_file.resolve()),
+            "env": sdk_env,
+        }
+
+        if cli_path:
+            options_kwargs["cli_path"] = cli_path
+
+        return ClaudeSDKClient(options=ClaudeAgentOptions(**options_kwargs))
 
     async def _collect_response(self, client: Any) -> str:
         """

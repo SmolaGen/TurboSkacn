@@ -164,6 +164,7 @@ interface ClaudeDetectionPaths {
  * // On macOS: { homebrewPaths: ['/opt/homebrew/bin/claude', ...], ... }
  */
 export function getClaudeDetectionPaths(homeDir: string): ClaudeDetectionPaths {
+  // Platform-specific paths
   const homebrewPaths = [
     '/opt/homebrew/bin/claude', // Apple Silicon
     '/usr/local/bin/claude',    // Intel Mac
@@ -171,16 +172,16 @@ export function getClaudeDetectionPaths(homeDir: string): ClaudeDetectionPaths {
 
   const platformPaths = isWindows()
     ? [
-        joinPaths(homeDir, 'AppData', 'Local', 'Programs', 'claude', `claude${getExecutableExtension()}`),
-        joinPaths(homeDir, 'AppData', 'Roaming', 'npm', 'claude.cmd'),
-        joinPaths(homeDir, '.local', 'bin', `claude${getExecutableExtension()}`),
-        'C:\\Program Files\\Claude\\claude.exe',
-        'C:\\Program Files (x86)\\Claude\\claude.exe',
-      ]
+      joinPaths(homeDir, 'AppData', 'Local', 'Programs', 'claude', `claude${getExecutableExtension()}`),
+      joinPaths(homeDir, 'AppData', 'Roaming', 'npm', 'claude.cmd'),
+      joinPaths(homeDir, '.local', 'bin', `claude${getExecutableExtension()}`),
+      'C:\\Program Files\\Claude\\claude.exe',
+      'C:\\Program Files (x86)\\Claude\\claude.exe',
+    ]
     : [
-        joinPaths(homeDir, '.local', 'bin', 'claude'),
-        joinPaths(homeDir, 'bin', 'claude'),
-      ];
+      joinPaths(homeDir, '.local', 'bin', 'claude'),
+      joinPaths(homeDir, 'bin', 'claude'),
+    ];
 
   const nvmVersionsDir = joinPaths(homeDir, '.nvm', 'versions', 'node');
 
@@ -801,7 +802,7 @@ class CLIToolManager {
     return {
       found: false,
       source: 'fallback',
-      message: 'Claude CLI not found. Install from https://claude.ai/download',
+      message: 'Gemini CLI not found. Install from https://aistudio.google.com/prompts',
     };
   }
 

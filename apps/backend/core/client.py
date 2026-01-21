@@ -44,6 +44,9 @@ _CACHE_TTL_SECONDS = 300  # 5 minute TTL
 _CACHE_LOCK = threading.Lock()  # Protects _PROJECT_INDEX_CACHE access
 
 
+from phase_config import resolve_model_id
+
+
 def _get_cached_project_data(
     project_dir: Path,
 ) -> tuple[dict[str, Any], dict[str, bool]]:
@@ -262,6 +265,7 @@ def find_claude_cli() -> str | None:
         logger.warning(f"CLAUDE_CLI_PATH is set but invalid: {env_path}")
 
     # 2. Try shutil.which() - most reliable cross-platform PATH lookup
+    # Search for claude (reverting previous change)
     which_path = shutil.which("claude")
     if which_path:
         valid, version = _validate_claude_cli(which_path)
@@ -709,6 +713,9 @@ def create_client(
        (see security.py for ALLOWED_COMMANDS)
     4. Tool filtering - Each agent type only sees relevant tools (prevents misuse)
     """
+    # Resolve model ID (applies overrides from API Profile/VibeProxy)
+    resolved_model = resolve_model_id(model)
+
     oauth_token = require_auth_token()
 
     # Validate token is not encrypted before passing to SDK
@@ -1023,7 +1030,7 @@ def create_client(
 
     # Build options dict, conditionally including output_format
     options_kwargs: dict[str, Any] = {
-        "model": model,
+        "model": resolved_model,
         "system_prompt": base_prompt,
         "allowed_tools": allowed_tools_list,
         "mcp_servers": mcp_servers,

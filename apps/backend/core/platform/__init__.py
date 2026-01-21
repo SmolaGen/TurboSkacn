@@ -257,6 +257,7 @@ def get_claude_detection_paths() -> list[str]:
     home_dir = Path.home()
     paths = []
 
+    # Platform-specific paths
     if is_windows():
         paths.extend(
             [

@@ -31,7 +31,10 @@ def get_utility_model_config(
         Tuple of (model_id, thinking_budget) where thinking_budget is None
         if extended thinking is disabled, or an int representing token budget
     """
-    model = os.environ.get("UTILITY_MODEL_ID", default_model)
+    from phase_config import resolve_model_id
+
+    model_id = os.environ.get("UTILITY_MODEL_ID", default_model)
+    model = resolve_model_id(model_id)
     thinking_budget_str = os.environ.get("UTILITY_THINKING_BUDGET", "")
 
     # Parse thinking budget: empty string = disabled (None), number = budget tokens
